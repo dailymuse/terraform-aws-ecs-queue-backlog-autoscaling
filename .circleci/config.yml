@@ -1,14 +1,34 @@
 version: 2.1
 
 jobs:
-  lint:
+  lint-12:
     docker:
       - image: hashicorp/terraform:0.12.2
     steps:
       - checkout
       - run:
+          name: Init
+          command: terraform init -backend=false
+      - run:
           name: Lint
-          command: terraform fmt -recursive -check=true -diff=true
+          command: terraform fmt -check=true -diff=true -recursive
+      - run:
+          name: Validate
+          command: terraform validate
+  lint-11:
+    docker:
+      - image: hashicorp/terraform:0.11.11
+    steps:
+      - checkout
+      - run:
+          name: Init
+          command: terraform init -backend=false
+      - run:
+          name: Lint
+          command: terraform fmt -check=true -diff=true
+      - run:
+          name: Validate
+          command: terraform validate -check-variables=false
   tag:
     machine: true
     parameters:
@@ -36,10 +56,12 @@ workflows:
   version: 2
   primary:
     jobs:
-      - lint
+      - lint-11
+      - lint-12
       - tag:
           requires:
-            - lint
+            - lint-11
+            - lint-12
           version: "1.0.0"
           filters:
             branches:
