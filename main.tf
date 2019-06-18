@@ -37,7 +37,7 @@ resource "aws_cloudwatch_event_target" "compute_queue_backlog" {
 data "template_file" "compute_queue_backlog" {
   template = "${file("${path.module}/files/cw_event_target_args.json.tpl")}"
 
-  vars {
+  vars = {
     cluster_name               = "${var.cluster_name}"
     service_name               = "${var.service_name}"
     queue_name                 = "${var.queue_name}"
