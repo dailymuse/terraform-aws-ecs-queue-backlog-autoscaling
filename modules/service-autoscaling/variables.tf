@@ -9,6 +9,7 @@ variable "service_name" {
 
 variable "max_capacity" {
   description = "Maximum number of tasks that the autoscaling policy can set for the service."
+  default     = 1
 }
 
 variable "min_capacity" {
