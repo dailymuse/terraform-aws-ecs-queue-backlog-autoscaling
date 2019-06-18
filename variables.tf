@@ -31,7 +31,8 @@ variable "queue_owner_aws_account_id" {
 }
 
 variable "queue_backlog_target_value" {
-  description = "Queue backlog (in seconds) to maintain for the service when under maximum load."
+  description = "Queue backlog (in seconds) to maintain for the service when under maximum load. Defaults to 600 seconds (10 minutes)."
+  default     = 600
 }
 
 variable "lambda_name" {
