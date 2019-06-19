@@ -62,7 +62,7 @@ workflows:
           requires:
             - lint-11
             - lint-12
-          version: "1.0.0"
+          version: "1.0.1"
           filters:
             branches:
               only:

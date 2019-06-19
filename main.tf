@@ -47,7 +47,6 @@ data "template_file" "compute_queue_backlog" {
 }
 
 resource "aws_lambda_permission" "compute_queue_backlog" {
-  statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
   function_name = "${data.aws_lambda_function.compute_queue_backlog.function_name}"
   principal     = "events.amazonaws.com"
