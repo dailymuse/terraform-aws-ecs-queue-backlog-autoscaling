@@ -1,0 +1,69 @@
+version: 2.1
+
+jobs:
+  lint-12:
+    docker:
+      - image: hashicorp/terraform:0.12.2
+    steps:
+      - checkout
+      - run:
+          name: Init
+          command: terraform init -backend=false
+      - run:
+          name: Lint
+          command: terraform fmt -check=true -diff=true -recursive
+      - run:
+          name: Validate
+          command: terraform validate
+  lint-11:
+    docker:
+      - image: hashicorp/terraform:0.11.11
+    steps:
+      - checkout
+      - run:
+          name: Init
+          command: terraform init -backend=false
+      - run:
+          name: Lint
+          command: terraform fmt -check=true -diff=true
+      - run:
+          name: Validate
+          command: terraform validate -check-variables=false
+  tag:
+    machine: true
+    parameters:
+      version:
+          description: "Module version"
+          type: string
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "bd:5a:bf:66:f2:6a:cf:d4:45:32:4b:19:1a:db:87:2d"
+      - checkout
+      - run:
+          name: Configure git
+          command: |
+            git config --global user.name "CircleCI"
+            git config --global user.email "circleci@themuse.com"
+      - run:
+          name: Create annotated tag
+          command: git tag -a "<< parameters.version >>" -m "Version << parameters.version >>"
+      - run:
+          name: Push tag
+          command: git push origin << parameters.version >>
+
+workflows:
+  version: 2
+  primary:
+    jobs:
+      - lint-11
+      - lint-12
+      - tag:
+          requires:
+            - lint-11
+            - lint-12
+          version: "1.0.0"
+          filters:
+            branches:
+              only:
+                - master
