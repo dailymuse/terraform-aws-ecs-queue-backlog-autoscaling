@@ -1,4 +1,8 @@
 {
+  "metric_provider": "${metric_provider}",
+  "metric_name": "${metric_name}",
+  "metric_filter": "${metric_filter}",
+  "metric_aggregate": "${metric_aggregate}",
   "cluster_name": "${cluster_name}",
   "service_name": "${service_name}",
   "queue_name": "${queue_name}",
