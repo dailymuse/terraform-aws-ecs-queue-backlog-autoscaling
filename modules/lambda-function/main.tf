@@ -1,5 +1,13 @@
 terraform {
-  required_version = ">= 0.11.11"
+  required_version = ">= 0.12"
+}
+
+locals {
+  datadog = {
+    account_id    = 464622532012
+    layer_runtime = "Python37"
+    layer_version = 4
+  }
 }
 
 data "archive_file" "compute_queue_backlog" {
@@ -9,12 +17,22 @@ data "archive_file" "compute_queue_backlog" {
 }
 
 resource "aws_lambda_function" "compute_queue_backlog" {
-  filename      = "${data.archive_file.compute_queue_backlog.output_path}"
-  function_name = "${var.name}"
-  role          = "${var.execution_role_arn != "" ? var.execution_role_arn : element(concat(aws_iam_role.compute_queue_backlog.*.arn, list("")), 0)}"
+  filename      = data.archive_file.compute_queue_backlog.output_path
+  function_name = var.name
+  role          = var.execution_role_arn != "" ? var.execution_role_arn : element(concat(aws_iam_role.compute_queue_backlog.*.arn, list("")), 0)
   handler       = "compute_queue_backlog.lambda_handler"
 
-  source_code_hash = "${base64sha256(file("${data.archive_file.compute_queue_backlog.output_path}"))}"
+  source_code_hash = filebase64sha256(data.archive_file.compute_queue_backlog.output_path)
+
+  layers = ["arn:aws:lambda:${data.aws_region.current.name}:${local.datadog.account_id}:layer:Datadog-${local.datadog.layer_runtime}:${local.datadog.layer_version}"]
+
+  environment {
+    variables = {
+      LOG_LEVEL  = var.log_level
+      DD_API_KEY = var.dd_api_key
+      DD_APP_KEY = var.dd_app_key
+    }
+  }
 
   runtime = "python3.7"
 }
@@ -23,10 +41,10 @@ resource "aws_lambda_function" "compute_queue_backlog" {
 #   Lambda Role
 #
 resource "aws_iam_role" "compute_queue_backlog" {
-  count              = "${var.execution_role_arn == "" ? 1 : 0}"
+  count              = var.execution_role_arn == "" ? 1 : 0
   name               = "${var.name}-role"
-  description        = "Grants ${var.name} lambda access to necessary ECS, SQS, and CloudWatch services."
-  assume_role_policy = "${data.aws_iam_policy_document.compute_queue_backlog_trust_relationship.json}"
+  description        = "Grants ${var.name} lambda access to necessary AWS services."
+  assume_role_policy = data.aws_iam_policy_document.compute_queue_backlog_trust_relationship.json
 }
 
 #
@@ -44,10 +62,17 @@ data "aws_iam_policy_document" "compute_queue_backlog_trust_relationship" {
 }
 
 resource "aws_iam_role_policy" "compute_queue_backlog" {
-  count  = "${var.execution_role_arn == "" ? 1 : 0}"
+  count  = var.execution_role_arn == "" ? 1 : 0
   name   = "${var.name}-role-policy"
   role   = "${element(concat(aws_iam_role.compute_queue_backlog.*.name, list("")), 0)}"
   policy = "${data.aws_iam_policy_document.compute_queue_backlog.json}"
+}
+
+resource "aws_iam_role_policy" "compute_queue_backlog_sqs" {
+  count  = var.execution_role_arn == "" && var.grant_access_to_sqs ? 1 : 0
+  name   = "${var.name}-role-policy-sqs"
+  role   = element(concat(aws_iam_role.compute_queue_backlog.*.name, list("")), 0)
+  policy = data.aws_iam_policy_document.compute_queue_backlog_sqs.json
 }
 
 data "aws_iam_policy_document" "compute_queue_backlog" {
@@ -57,8 +82,6 @@ data "aws_iam_policy_document" "compute_queue_backlog" {
     actions = [
       "cloudwatch:PutMetricData",
       "ecs:DescribeServices",
-      "sqs:GetQueueUrl",
-      "sqs:GetQueueAttributes",
     ]
 
     resources = ["*"]
@@ -74,6 +97,19 @@ data "aws_iam_policy_document" "compute_queue_backlog" {
     effect    = "Allow"
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.name}:*"]
+  }
+}
+
+data "aws_iam_policy_document" "compute_queue_backlog_sqs" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "sqs:GetQueueUrl",
+      "sqs:GetQueueAttributes",
+    ]
+
+    resources = ["*"]
   }
 }
 

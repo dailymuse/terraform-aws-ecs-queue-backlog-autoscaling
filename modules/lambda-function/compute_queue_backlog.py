@@ -11,31 +11,90 @@ This lambda function computes the following metrics.
 
 import datetime
 import logging
+import os
+import time
+from typing import Any, Dict, Mapping, Optional
 
 import boto3
 
+import datadog
 
-logger = logging.getLogger('lambda.compute_queue_backlog')
-logger.setLevel('INFO')
+# NOTE: Could make this configurable, but realistically any metric that we would
+# want to generate a backlog value (which has scaling as its primary use case) from
+# would have a five minute or less resolution.
+FIVE_MINUTES: int = 60 * 5
 
-sqs = boto3.client('sqs')
+dd_api_key: Optional[str] = os.environ.get('DD_API_KEY')
+dd_app_key: Optional[str] = os.environ.get('DD_APP_KEY')
+
+if dd_api_key and dd_app_key:
+    datadog.initialize(api_key=dd_api_key, app_key=dd_app_key)
+
+
+logger: logging.Logger = logging.getLogger('lambda.compute_queue_backlog')
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+
 ecs = boto3.client('ecs')
 cw = boto3.client('cloudwatch')
 
 
-def lambda_handler(event, context):
+class InvalidMetricProviderError(Exception):
+    """Exception thrown if the specified metric provider is unrecognized."""
+
+    def __init__(self, metric_provider: str) -> None:
+        """Create the exception for `metric_provider`."""
+        self.metric_provider = metric_provider
+        super().__init__(f"'{metric_provider}' is not a valid metric provider.")
+
+
+def get_queue_metric_from_sqs(event: Mapping[str, Any]) -> int:
+    """Retrieve the assigned queue metric for an SQS queue."""
+    sqs = boto3.client('sqs')
+    queue_url = sqs.get_queue_url(QueueName=event['queue_name'], QueueOwnerAWSAccountId=event['queue_owner_aws_account_id'])['QueueUrl']
+    queue_attrs = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=[event['metric_name']])['Attributes']
+
+    return int(queue_attrs.get(event['metric_name'], 0))
+
+
+def get_queue_metric_from_datadog(event: Mapping[str, Any]) -> int:
+    """Determine out the queue backlog value for an SQS queue."""
+    now = int(time.time())
+    response = datadog.api.Metric.query(
+        start=now - FIVE_MINUTES,
+        end=now,
+        query=f"{event.get('metric_aggregate') or 'max'}:{event['metric_name']}" + "{" + (event.get('metric_filter') or '*') + "}"
+    )
+
+    # Should not need to check response status, as DataDog's request API does this
+    # Though it's unclear if there are cases where response["status"] != "ok", but
+    # response.status_code < 400...
+
+    # We only care about the very last result in the series, since it is most recently
+    # known
+    last_slice = response['series'][-1]
+    samples = last_slice['pointlist']
+    _, metric_value = samples[-1]
+    return metric_value
+
+
+def lambda_handler(event: Mapping[str, Any], context: Mapping[str, Any]) -> Dict[str, Any]:
     """Entrypoint to compute the QueueRequiresConsumer and QueueBacklog metrics."""
-    cluster = event["cluster_name"]
-    service = event["service_name"]
-    account_id = event["queue_owner_aws_account_id"]
-    queue_name = event["queue_name"]
-    msgs_per_sec = int(event.get("est_msgs_per_sec", 1))
-    service_desc = ecs.describe_services(cluster=cluster, services=[service])["services"][0]
-    num_tasks = service_desc["desiredCount"]
-    queue_url = sqs.get_queue_url(QueueName=queue_name, QueueOwnerAWSAccountId=account_id)['QueueUrl']
-    queue_attrs = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=['ApproximateNumberOfMessages'])['Attributes']
-    approx_num_msgs = int(queue_attrs.get('ApproximateNumberOfMessages', 0))
-    queue_requires_consumer = 1 if num_tasks == 0 and approx_num_msgs > 0 else 0
+    metric_provider = event['metric_provider']
+    if metric_provider == 'AWS/SQS':
+        metric_value = get_queue_metric_from_sqs(event)
+    elif metric_provider == 'DATADOG':
+        metric_value = get_queue_metric_from_datadog(event)
+    else:
+        raise InvalidMetricProviderError(metric_provider)
+
+    cluster = event['cluster_name']
+    service = event['service_name']
+    queue_name = event['queue_name']
+
+    service_desc = ecs.describe_services(cluster=cluster, services=[service])['services'][0]
+    num_tasks = service_desc['desiredCount']
+
+    queue_requires_consumer = 1 if num_tasks == 0 and metric_value > 0 else 0
     cw.put_metric_data(
         Namespace='AWS/ECS',
         MetricData=[{
@@ -45,12 +104,13 @@ def lambda_handler(event, context):
             'Value': queue_requires_consumer
         }]
     )
+    logger.debug('Emitted QueueRequiresConsumer=%d for cluster=%s service=%s queue=%s.', queue_requires_consumer, cluster, service, queue_name)
 
-    logger.info('Emitted QueueRequiresConsumer=%d for cluster=%s service=%s queue=%s.', queue_requires_consumer, cluster, service, queue_name)
+    msgs_per_sec = int(event.get('est_msgs_per_sec', 1))
 
     if num_tasks > 0:
-        backlog_secs = approx_num_msgs / (num_tasks * msgs_per_sec)
-    elif approx_num_msgs == 0:
+        backlog_secs = metric_value / (num_tasks * msgs_per_sec)
+    elif metric_value == 0:
         backlog_secs = 0
     else:
         # Backlog is undefined when there are no tasks but a message
@@ -67,6 +127,6 @@ def lambda_handler(event, context):
         }]
     )
 
-    logger.info('Emitted QueueBacklog=%d for cluster=%s service=%s queue=%s.', backlog_secs, cluster, service, queue_name)
+    logger.debug('Emitted QueueBacklog=%d for cluster=%s service=%s queue=%s.', backlog_secs, cluster, service, queue_name)
 
     return {}
