@@ -28,6 +28,11 @@ variable "dd_app_key" {
   default     = ""
 }
 
+variable "enable_datadog_json_formatter" {
+  description = "If Muselog is available to the lambda function, this setting will ensure that its logs are in JSON format for easier parsing by DataDog logs."
+  default     = "true"
+}
+
 variable "execution_role_arn" {
   description = "IAM role arn to use for lambda execution. If not supplied, this module will create a role with necessary permissions. These permissions are 'cloudwatch:PutMetricData', 'ecs:DescribeServices', 'logs:CreateLogGroup', 'logs:CreateLogStream', and 'logs:PutLogEvents'. If 'grant_access_to_sqs' is 'true', 'sqs:GetQueueUrl' and 'sqs:GetQueueAttributes' are also added."
   default     = ""
