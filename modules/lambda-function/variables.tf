@@ -13,6 +13,11 @@ variable "log_level" {
   default     = "INFO"
 }
 
+variable "lambda_layers" {
+  description = "Additional lambda layers to add to the lambda."
+  default     = []
+}
+
 variable "dd_api_key" {
   description = "The API key for the lambda to use when communicating with DataDog. Required to use the lambda with DataDog metrics."
   default     = ""

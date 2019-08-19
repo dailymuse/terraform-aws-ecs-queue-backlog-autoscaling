@@ -18,6 +18,7 @@ module "compute_queue_backlog" {
 }
 ```
 
+
 ## What's included in this module?
 
 This module creates the following resources.
@@ -27,11 +28,14 @@ This module creates the following resources.
 
 
 ### Lambda Function
+
 The lambda function computes QueueBacklog and QueueRequiresConsumer CloudWatch
 metrics via [compute_queue_backlog.py](compute_queue_backlog.py). The function
 must take the following parameters as its input.
 
+
 #### Parameters
+
 * cluster_name - The name of the ECS cluster
 * service_name - The name of the ECS service that consumes from the target queue
 * queue_name - The target queue name
@@ -39,26 +43,37 @@ must take the following parameters as its input.
 * metric_name - The name of the metric the lambda uses to derive the queue backlog value. (Default: `ApproximateNumberOfMessages`).
 * est_msgs_per_sec - Non-negative integer that represents the estimated number of messages the service can consume from the target queue in one second. (Default: `1`).
 
+
 ##### DataDog
+
 * metric_filter - The filter condition to apply to the metric query. (Default: `*`).
 * metric_aggregate - The aggregate function to use for metric rollup. (Valid values: `min`, `max` [default], `avg`, `sum`).
 
+
 ##### AWS/SQS
+
 * queue_owner_aws_account_id - The AWS account id that provides the target queue.
 
+
 #### Environment
+
 * LOG_LEVEL - Log level to use for Lambda logs. Accepts the standard Python log levels. (Default: `INFO`).
 
+
 ##### DataDog
+
 * DD_API_KEY - The API key for the lambda to use when communicating with DataDog.
 * DD_APP_KEY - The Application key for the lambda to use when reading metrics from DataDog.
 
+
 #### Assumptions
+
 * An increase in the metric value must signify an increase in pressure on the queue.
 * A metric value of `0` must signify that the queue is empty.
 
 
 ### Roles and Permissions
+
 This module will create an execution role for the lambda function, a trust policy,
 and an inline policy for the execution role. The trust policy allows AWS Lambda to
 assume the execution role. The inline policy grants the execution role holder access

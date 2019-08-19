@@ -24,7 +24,11 @@ resource "aws_lambda_function" "compute_queue_backlog" {
 
   source_code_hash = filebase64sha256(data.archive_file.compute_queue_backlog.output_path)
 
-  layers = ["arn:aws:lambda:${data.aws_region.current.name}:${local.datadog.account_id}:layer:Datadog-${local.datadog.layer_runtime}:${local.datadog.layer_version}"]
+  layers = concat(
+    ["arn:aws:lambda:${data.aws_region.current.name}:${local.datadog.account_id}:layer:Datadog-${local.datadog.layer_runtime}:${local.datadog.layer_version}"],
+    var.lambda_layers
+  )
+
 
   environment {
     variables = {

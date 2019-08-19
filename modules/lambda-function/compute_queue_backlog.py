@@ -12,6 +12,7 @@ This lambda function computes the following metrics.
 import datetime
 import logging
 import os
+import sys
 import time
 from typing import Any, Dict, Mapping, Optional
 
@@ -19,20 +20,35 @@ import boto3
 
 import datadog
 
+# Try importing muselog so we can get additional logging functionality
+try:
+    import muselog
+except ImportError:
+    pass
+
 # NOTE: Could make this configurable, but realistically any metric that we would
 # want to generate a backlog value (which has scaling as its primary use case) from
 # would have a five minute or less resolution.
 FIVE_MINUTES: int = 60 * 5
+
+log_level: str = os.environ.get('LOG_LEVEL', 'INFO')
+
+logger: logging.Logger = logging.getLogger('lambda.compute_queue_backlog')
+if 'muselog' in sys.modules:
+    muselog.setup_logging(
+        root_log_level=log_level,
+        module_log_levels={
+            'lambda.compute_queue_backlog': os.environ.get('MODULE_LOG_LEVEL', 'INFO')
+        }
+    )
+else:
+    logger.setLevel(log_level)
 
 dd_api_key: Optional[str] = os.environ.get('DD_API_KEY')
 dd_app_key: Optional[str] = os.environ.get('DD_APP_KEY')
 
 if dd_api_key and dd_app_key:
     datadog.initialize(api_key=dd_api_key, app_key=dd_app_key)
-
-
-logger: logging.Logger = logging.getLogger('lambda.compute_queue_backlog')
-logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 ecs = boto3.client('ecs')
 cw = boto3.client('cloudwatch')
@@ -99,12 +115,24 @@ def lambda_handler(event: Mapping[str, Any], context: Mapping[str, Any]) -> Dict
         Namespace='AWS/ECS',
         MetricData=[{
             'MetricName': 'QueueRequiresConsumer',
-            'Dimensions': [{'Name': 'ClusterName', 'Value': cluster}, {'Name': 'ServiceName', 'Value': service}, {'Name': 'QueueName', 'Value': queue_name}],
+            'Dimensions': [
+                {'Name': 'ClusterName', 'Value': cluster},
+                {'Name': 'ServiceName', 'Value': service},
+                {'Name': 'QueueName', 'Value': queue_name}
+            ],
             'Timestamp': datetime.datetime.utcnow(),
             'Value': queue_requires_consumer
         }]
     )
-    logger.debug('Emitted QueueRequiresConsumer=%d for cluster=%s service=%s queue=%s.', queue_requires_consumer, cluster, service, queue_name)
+    logger.debug('Emitted QueueRequiresConsumer=%d for cluster=%s service=%s queue=%s.',
+                 queue_requires_consumer,
+                 cluster,
+                 service,
+                 queue_name,
+                 extra={'ctx': dict(cluster_name=cluster,
+                                    service_name=service,
+                                    queue_name=queue_name,
+                                    queue_requires_consumer=queue_requires_consumer)})
 
     msgs_per_sec = int(event.get('est_msgs_per_sec', 1))
 
@@ -121,12 +149,24 @@ def lambda_handler(event: Mapping[str, Any], context: Mapping[str, Any]) -> Dict
         Namespace='AWS/ECS',
         MetricData=[{
             'MetricName': 'QueueBacklog',
-            'Dimensions': [{'Name': 'ClusterName', 'Value': cluster}, {'Name': 'ServiceName', 'Value': service}, {'Name': 'QueueName', 'Value': queue_name}],
+            'Dimensions': [
+                {'Name': 'ClusterName', 'Value': cluster},
+                {'Name': 'ServiceName', 'Value': service},
+                {'Name': 'QueueName', 'Value': queue_name}
+            ],
             'Timestamp': datetime.datetime.utcnow(),
             'Value': backlog_secs
         }]
     )
 
-    logger.debug('Emitted QueueBacklog=%d for cluster=%s service=%s queue=%s.', backlog_secs, cluster, service, queue_name)
+    logger.debug('Emitted QueueBacklog=%d for cluster=%s service=%s queue=%s.',
+                 backlog_secs,
+                 cluster,
+                 service,
+                 queue_name,
+                 extra={'ctx': dict(cluster_name=cluster,
+                                    service_name=service,
+                                    queue_name=queue_name,
+                                    queue_backlog=backlog_secs)})
 
     return {}
