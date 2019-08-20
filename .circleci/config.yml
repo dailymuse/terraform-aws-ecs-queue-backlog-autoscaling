@@ -46,7 +46,7 @@ workflows:
       - tag:
           requires:
             - lint
-          version: "2.1.1"
+          version: "2.1.2"
           filters:
             branches:
               only:
