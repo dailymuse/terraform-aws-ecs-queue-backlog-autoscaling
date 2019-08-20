@@ -66,10 +66,11 @@ class InvalidMetricProviderError(Exception):
 def get_queue_metric_from_sqs(event: Mapping[str, Any]) -> int:
     """Retrieve the assigned queue metric for an SQS queue."""
     sqs = boto3.client('sqs')
+    metric_name = event.get('metric_name') or 'ApproximateNumberOfMessages'
     queue_url = sqs.get_queue_url(QueueName=event['queue_name'], QueueOwnerAWSAccountId=event['queue_owner_aws_account_id'])['QueueUrl']
-    queue_attrs = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=[event['metric_name']])['Attributes']
+    queue_attrs = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=[metric_name])['Attributes']
 
-    return int(queue_attrs.get(event['metric_name'], 0))
+    return int(queue_attrs.get(metric_name, 0))
 
 
 def get_queue_metric_from_datadog(event: Mapping[str, Any]) -> int:
@@ -95,7 +96,7 @@ def get_queue_metric_from_datadog(event: Mapping[str, Any]) -> int:
 
 def lambda_handler(event: Mapping[str, Any], context: Mapping[str, Any]) -> Dict[str, Any]:
     """Entrypoint to compute the QueueRequiresConsumer and QueueBacklog metrics."""
-    metric_provider = event['metric_provider']
+    metric_provider = event.get('metric_provider') or 'AWS/SQS'
     if metric_provider == 'AWS/SQS':
         metric_value = get_queue_metric_from_sqs(event)
     elif metric_provider == 'DATADOG':
