@@ -7,6 +7,11 @@ variable "service_name" {
   description = "ECS service name"
 }
 
+variable "create_appautoscaling_target" {
+  description = "Flag to indicate if the module will create an appautoscaling_target. If false, module assumes a target already exists."
+  default     = true
+}
+
 variable "max_capacity" {
   description = "Maximum number of tasks that the autoscaling policy can set for the service."
   default     = 1

@@ -2,20 +2,34 @@ terraform {
   required_version = ">= 0.12"
 }
 
+locals {
+  appautoscaling_target_info = {
+    resource_id        = "service/${var.cluster_name}/${var.service_name}"
+    scalable_dimension = "ecs:service:DesiredCount"
+    service_namespace  = "ecs"
+  }
+}
+
 resource "aws_appautoscaling_target" "service_appautoscaling_target" {
+  count = var.create_appautoscaling_target ? 1 : 0
+
   max_capacity       = var.max_capacity
   min_capacity       = var.min_capacity
-  resource_id        = "service/${var.cluster_name}/${var.service_name}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
+  resource_id        = local.appautoscaling_target_info.resource_id
+  scalable_dimension = local.appautoscaling_target_info.scalable_dimension
+  service_namespace  = local.appautoscaling_target_info.service_namespace
+}
+
+locals {
+  service_appautoscaling_target = var.create_appautoscaling_target ? aws_appautoscaling_target.service_appautoscaling_target[0] : local.appautoscaling_target_info
 }
 
 resource "aws_appautoscaling_policy" "queue_backlog_scaling_policy" {
   name               = "${var.service_name}-${var.queue_name}-queue-backlog-scaling-policy"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.service_appautoscaling_target.resource_id
-  scalable_dimension = aws_appautoscaling_target.service_appautoscaling_target.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.service_appautoscaling_target.service_namespace
+  resource_id        = local.service_appautoscaling_target.resource_id
+  scalable_dimension = local.service_appautoscaling_target.scalable_dimension
+  service_namespace  = local.service_appautoscaling_target.service_namespace
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.target_value
@@ -48,9 +62,9 @@ resource "aws_appautoscaling_policy" "queue_backlog_scaling_policy" {
 resource "aws_appautoscaling_policy" "queue_requires_consumer_scaling_policy" {
   name               = "${var.service_name}-${var.queue_name}-queue-requires-consumer-scaling-policy"
   policy_type        = "StepScaling"
-  resource_id        = aws_appautoscaling_target.service_appautoscaling_target.resource_id
-  scalable_dimension = aws_appautoscaling_target.service_appautoscaling_target.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.service_appautoscaling_target.service_namespace
+  resource_id        = local.service_appautoscaling_target.resource_id
+  scalable_dimension = local.service_appautoscaling_target.scalable_dimension
+  service_namespace  = local.service_appautoscaling_target.service_namespace
 
   step_scaling_policy_configuration {
     adjustment_type         = "ExactCapacity"
