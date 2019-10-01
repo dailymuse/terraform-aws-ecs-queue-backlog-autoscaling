@@ -79,7 +79,7 @@ resource "aws_appautoscaling_policy" "queue_requires_consumer_scaling_policy" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "queue_requires_consumer_alarm" {
-  alarm_name          = "ecs-${var.service_name}-${var.queue_name}-queue-requires-consumer"
+  alarm_name          = "${var.queue_requires_consumer_alarm_prefix}ecs-${var.service_name}-${var.queue_name}-queue-requires-consumer"
   alarm_description   = "Managed by Terraform"
   alarm_actions       = [aws_appautoscaling_policy.queue_requires_consumer_scaling_policy.arn]
   comparison_operator = var.queue_requires_consumer_alarm_comparison_op

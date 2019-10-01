@@ -51,6 +51,11 @@ variable "rampup_capacity" {
   default     = 1
 }
 
+variable "queue_requires_consumer_alarm_prefix" {
+  description = "Prefix to apply to the QueueRequiresConsumer CloudWatch alarm, which may be necessary to ensure uniqueness in multi-environment deployments."
+  default     = ""
+}
+
 variable "queue_requires_consumer_alarm_period" {
   description = "Number of seconds to aggregate QueueRequiresConsumer metric before testing against the alarm threshold."
   default     = 60
