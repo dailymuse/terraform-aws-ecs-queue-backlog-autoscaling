@@ -75,3 +75,8 @@ variable "queue_requires_consumer_alarm_comparison_op" {
   description = "Operator to use when comparing QueueRequiresConsumer against the alarm threshold."
   default     = "GreaterThanThreshold"
 }
+
+variable "queue_requires_consumer_alarm_tags" {
+  description = "Map of AWS tags to add to the alarm. Note that the 'Name' tag is always added, and is the same as the value of the resource's 'name' attribute by default. The 'Description' tag is added as well."
+  default     = {}
+}

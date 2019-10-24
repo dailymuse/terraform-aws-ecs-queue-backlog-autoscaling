@@ -40,6 +40,14 @@ resource "aws_lambda_function" "compute_queue_backlog" {
   }
 
   runtime = "python3.7"
+
+  tags = merge(
+    {
+      Name        = var.name
+      Description = "Computes the QueueBacklog and QueueRequiresConsumer metrics."
+    },
+    var.tags
+  )
 }
 
 #
@@ -50,6 +58,14 @@ resource "aws_iam_role" "compute_queue_backlog" {
   name               = "${var.name}-role"
   description        = "Grants ${var.name} lambda access to necessary AWS services."
   assume_role_policy = data.aws_iam_policy_document.compute_queue_backlog_trust_relationship.json
+
+  tags = merge(
+    {
+      Name        = "${var.name}-role"
+      Description = "Grants ${var.name} lambda access to necessary AWS services."
+    },
+    var.execution_role_tags
+  )
 }
 
 #
