@@ -50,6 +50,16 @@ variable "lambda_invocation_interval" {
   default     = "rate(1 minute)"
 }
 
+variable "cloudwatch_event_rule_tags" {
+  description = "Map of AWS tags to add to the CloudWatch Event Rule that invokes the queue backlog lambda. Note that the 'Name' tag is always added, and is the same as the value of the resource's 'name' attribute by default."
+  default     = {}
+}
+
+variable "queue_requires_consumer_alarm_tags" {
+  description = "Map of AWS tags to add to the alarm. Note that the 'Name' tag is always added, and is the same as the value of the resource's 'name' attribute by default. The 'Description' tag is added as well."
+  default     = {}
+}
+
 
 # AWS/SQS-specific configuration
 

@@ -14,6 +14,8 @@ module "autoscale_service" {
   min_capacity = var.service_min_capacity
 
   target_value = var.queue_backlog_target_value
+
+  queue_requires_consumer_alarm_tags = var.queue_requires_consumer_alarm_tags
 }
 
 data "aws_lambda_function" "compute_queue_backlog" {
@@ -25,6 +27,14 @@ resource "aws_cloudwatch_event_rule" "compute_queue_backlog" {
   name                = "${data.aws_lambda_function.compute_queue_backlog.function_name}-${var.service_name}"
   description         = "Schedule execution of ${data.aws_lambda_function.compute_queue_backlog.function_name} to compute queue backlog metrics for ${var.service_name} ${var.queue_name} queue."
   schedule_expression = var.lambda_invocation_interval
+
+  tags = merge(
+    {
+      Name        = "${data.aws_lambda_function.compute_queue_backlog.function_name}-${var.service_name}"
+      Description = "Schedule execution of ${data.aws_lambda_function.compute_queue_backlog.function_name} to compute queue backlog metrics for ${var.service_name} ${var.queue_name} queue."
+    },
+    var.cloudwatch_event_rule_tags
+  )
 }
 
 resource "aws_cloudwatch_event_target" "compute_queue_backlog" {
