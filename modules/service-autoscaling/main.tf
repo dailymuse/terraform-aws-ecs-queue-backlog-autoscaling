@@ -99,7 +99,7 @@ resource "aws_cloudwatch_metric_alarm" "queue_requires_consumer_alarm" {
   tags = merge(
     {
       Name        = "${var.queue_requires_consumer_alarm_prefix}ecs-${var.service_name}-${var.queue_name}-queue-requires-consumer"
-      Description = "Signals that the ${var.queue_name} queue for service ${var.service_name} on cluster ${var.cluster_name} is not empty and there are no tasks that are processing it, yet."
+      Description = "Queue has entries but no process to consume"
     },
     var.queue_requires_consumer_alarm_tags
   )
