@@ -16,6 +16,8 @@ module "autoscale_service" {
   target_value = var.queue_backlog_target_value
 
   queue_requires_consumer_alarm_tags = var.queue_requires_consumer_alarm_tags
+
+  depends_on_service = var.depends_on_service
 }
 
 data "aws_lambda_function" "compute_queue_backlog" {

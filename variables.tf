@@ -60,6 +60,12 @@ variable "queue_requires_consumer_alarm_tags" {
   default     = {}
 }
 
+variable "depends_on_service" {
+  description = "aws_ecs_service object that you can pass to the module to ensure resources are recreated properly on service recreate."
+  type        = any
+  default     = null
+}
+
 
 # AWS/SQS-specific configuration
 

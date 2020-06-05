@@ -85,8 +85,8 @@ data "aws_iam_policy_document" "compute_queue_backlog_trust_relationship" {
 resource "aws_iam_role_policy" "compute_queue_backlog" {
   count  = var.execution_role_arn == "" ? 1 : 0
   name   = "${var.name}-role-policy"
-  role   = "${element(concat(aws_iam_role.compute_queue_backlog.*.name, list("")), 0)}"
-  policy = "${data.aws_iam_policy_document.compute_queue_backlog.json}"
+  role   = element(concat(aws_iam_role.compute_queue_backlog.*.name, list("")), 0)
+  policy = data.aws_iam_policy_document.compute_queue_backlog.json
 }
 
 resource "aws_iam_role_policy" "compute_queue_backlog_sqs" {

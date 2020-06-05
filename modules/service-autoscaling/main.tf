@@ -3,8 +3,12 @@ terraform {
 }
 
 locals {
+  cluster_name = var.cluster_name != "" ? var.cluster_name : "default"
+}
+
+locals {
   appautoscaling_target_info = {
-    resource_id        = "service/${var.cluster_name}/${var.service_name}"
+    resource_id        = "service/${local.cluster_name}/${var.depends_on_service != null ? split("/", var.depends_on_service.id)[2] : var.service_name}"
     scalable_dimension = "ecs:service:DesiredCount"
     service_namespace  = "ecs"
   }
