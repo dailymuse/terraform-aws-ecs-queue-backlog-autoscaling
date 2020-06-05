@@ -1,5 +1,11 @@
+variable "create_queue" {
+  description = "Create the queue. Otherwise, assume it exists."
+  default     = false
+}
+
 variable "queue_name" {
   description = "SQS queue name."
+  default     = "ecs-queue-backlog-example"
 }
 
 variable "queue_backlog_target_value" {
@@ -12,8 +18,14 @@ variable "cluster_id" {
   default     = "default"
 }
 
+variable "create_service" {
+  description = "Create the ECS service with a dummy task definition. Otherwise, assume it exists."
+  default     = false
+}
+
 variable "service_name" {
   description = "ECS service name."
+  default     = "ecs-queue-backlog-example"
 }
 
 variable "service_max_capacity" {

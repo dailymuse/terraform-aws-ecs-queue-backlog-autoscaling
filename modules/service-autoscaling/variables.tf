@@ -80,3 +80,9 @@ variable "queue_requires_consumer_alarm_tags" {
   description = "Map of AWS tags to add to the alarm. Note that the 'Name' tag is always added, and is the same as the value of the resource's 'name' attribute by default. The 'Description' tag is added as well."
   default     = {}
 }
+
+variable "depends_on_service" {
+  description = "aws_ecs_service object that you can pass to the module to ensure autoscaling resources are recreated properly."
+  type        = any
+  default     = null
+}
