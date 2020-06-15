@@ -86,13 +86,3 @@ variable "metric_aggregate" {
   description = "The aggregate function to use for metric rollup. Valid values are 'min', 'max', 'avg', and 'sum'."
   default     = ""
 }
-
-variable "dd_api_key" {
-  description = "The API key for the lambda to use when communicating with DataDog. Required if the metric_provider is 'DATADOG'."
-  default     = ""
-}
-
-variable "dd_app_key" {
-  description = "The Application key for the lambda to use when reading metrics from DataDog. Required if the metric_provider is 'DATADOG'."
-  default     = ""
-}

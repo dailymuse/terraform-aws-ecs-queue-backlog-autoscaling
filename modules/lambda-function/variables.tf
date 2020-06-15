@@ -28,8 +28,18 @@ variable "dd_api_key" {
   default     = ""
 }
 
+variable "dd_api_key_path" {
+  description = "ECS parameter store path where the DataDog API key is found. This is preferred over dd_api_key."
+  default     = ""
+}
+
 variable "dd_app_key" {
   description = "The Application key for the lambda to use when reading metrics from DataDog. Required to use the lambda with DataDog metrics."
+  default     = ""
+}
+
+variable "dd_app_key_path" {
+  description = "ECS parameter store path where the DataDog APP key is found. This is preferred over dd_app_key."
   default     = ""
 }
 

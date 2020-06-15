@@ -44,14 +44,26 @@ if 'muselog' in sys.modules:
 else:
     logger.setLevel(log_level)
 
-dd_api_key: Optional[str] = os.environ.get('DD_API_KEY')
-dd_app_key: Optional[str] = os.environ.get('DD_APP_KEY')
+cw = boto3.client('cloudwatch')
+ecs = boto3.client('ecs')
+ssm = boto3.client('ssm')
+
+dd_api_key: Optional[str] = os.environ.get('DD_API_KEY_PATH')
+if dd_api_key:
+    dd_api_key = ssm.get_parameter(Name=dd_api_key, WithDecryption=True)['Parameter']['Value']
+else:
+    dd_api_key = os.environ.get('DD_API_KEY')
+
+dd_app_key: Optional[str] = os.environ.get('DD_APP_KEY_PATH')
+if dd_app_key:
+    dd_app_key = ssm.get_parameter(Name=dd_app_key, WithDecryption=True)['Parameter']['Value']
+else:
+    dd_app_key = os.environ.get('DD_APP_KEY')
 
 if dd_api_key and dd_app_key:
     datadog.initialize(api_key=dd_api_key, app_key=dd_app_key)
-
-ecs = boto3.client('ecs')
-cw = boto3.client('cloudwatch')
+elif dd_api_key or dd_app_key:
+    logger.warning('Must define both key types (app and api) to use the DataDog integration.')
 
 
 class InvalidMetricProviderError(Exception):
