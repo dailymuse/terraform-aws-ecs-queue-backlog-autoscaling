@@ -34,7 +34,9 @@ resource "aws_lambda_function" "compute_queue_backlog" {
     variables = {
       LOG_LEVEL                     = var.log_level
       DD_API_KEY                    = var.dd_api_key
+      DD_API_KEY_PATH               = var.dd_api_key_path
       DD_APP_KEY                    = var.dd_app_key
+      DD_APP_KEY_PATH               = var.dd_app_key_path
       ENABLE_DATADOG_JSON_FORMATTER = var.enable_datadog_json_formatter
     }
   }
