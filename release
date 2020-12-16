@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+read -d '' HELP_STRING <<'EOF'
+Usage: release major|minor|patch
+
+Create and push a version tag for the module.
+
+EOF
+
+set -e
+
+if [ "$#" -eq 0 ]; then
+    echo "$HELP_STRING"
+    exit 0
+fi
+
+kind="$1"
+
+if [[ "$kind" != "major" && "$kind" != "minor" && "$kind" != "patch" ]]; then
+    echo "Release type must be one of 'major', 'minor', or 'patch'." 1>&2
+    exit 1
+fi
+
+shift 1
+
+if [ "$(git branch --show-current)" != "main" ]; then
+    echo "You must be on main to release." 1>&2
+    exit 1
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+    echo "You cannot have outstanding changes in main. Please reset." 1>&2
+    exit 1
+fi
+
+git fetch origin main
+
+# We want to ensure that local main is up-to-date with upstream, or
+# is behind. It cannot be ahead or diverging.
+status=$(git rev-list --left-right --count origin/main...main)
+ahead=$(echo "$status" | awk '{ print $2 }')
+if [ $ahead -gt 0 ]; then
+    echo "Local is ahead of upstream. Please reset." 1>&2
+    exit 1
+fi
+
+# Get up-to-date with upstream, if we aren't already.
+git pull --ff-only
+
+# Here we get the latest tag that is an ancestor of this commit.
+# We match only legit versions (those starting with a decimal),
+# and return extactly the tag by removing all abbreviation data (abbrev=0).
+# We use --first-parent to ensure we do not follow commits that were merged in
+# (so we do not follow commits from merged PRs, as we are not interested in tags from
+# those; we only care about tags cut from main).
+# If there is no latest tag that matches our criteria, we start with "0.0.0"
+# as current version. Then, our next (i.e., released) version will be "1.0.0",
+# "0.1.0", or "0.0.1", depending on the `kind` argument.
+if ! git describe --abbrev=0 --first-parent --match "[0-9]*"; then
+    version="0.0.0"
+else
+    version=$(git describe --abbrev=0 --first-parent --match "[0-9]*")
+fi
+
+echo "Current version is '$version'."
+IFS="." read -r -a version_arr <<< "$version"
+major=${version_arr[0]}
+minor=${version_arr[1]}
+patch=${version_arr[2]}
+
+if [ "$kind" = "major" ]; then
+    next_version="$((major+1)).0.0"
+elif [ "$kind" = "minor" ]; then
+    next_version="${major}.$((minor+1)).0"
+else
+    next_version="${major}.${minor}.$((patch+1))"
+fi
+
+echo -n "Proposing next version as '$next_version'. Release? (y/n) "
+read yn
+
+if [ "$yn" != "y" ]; then
+    exit 0
+fi
+
+git tag -a "$next_version" -m "${kind} release: $next_version"
+git push origin "$next_version"
+
+echo "Done!"

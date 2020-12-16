@@ -15,39 +15,8 @@ jobs:
       - run:
           name: Validate
           command: terraform validate
-  tag:
-    machine: true
-    parameters:
-      version:
-          description: "Module version"
-          type: string
-    steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "bd:5a:bf:66:f2:6a:cf:d4:45:32:4b:19:1a:db:87:2d"
-      - checkout
-      - run:
-          name: Configure git
-          command: |
-            git config --global user.name "CircleCI"
-            git config --global user.email "circleci@themuse.com"
-      - run:
-          name: Create annotated tag
-          command: git tag -a "<< parameters.version >>" -m "Version << parameters.version >>"
-      - run:
-          name: Push tag
-          command: git push origin << parameters.version >>
-
 workflows:
   version: 2
   primary:
     jobs:
       - lint
-      - tag:
-          requires:
-            - lint
-          version: "2.4.0"
-          filters:
-            branches:
-              only:
-                - master
